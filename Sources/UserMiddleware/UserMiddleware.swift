@@ -59,8 +59,7 @@ public protocol UserStorage {
     func update(
         email: String,
         givenName: String?,
-        familyName: String?,
-        email: String?
+        familyName: String?
     ) -> AnyPublisher<Void, UserError>
     func delete(email: String) -> AnyPublisher<Void, UserError>
 }

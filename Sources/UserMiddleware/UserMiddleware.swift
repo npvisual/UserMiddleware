@@ -51,17 +51,19 @@ public enum UserError: Error {
 // MARK: - PROTOCOL
 public protocol UserStorage {
     func create(
+        key: String,
         givenName: String,
         familyName: String,
         email: String
-    ) -> AnyPublisher<Void, UserError>
-    func read(email: String) -> AnyPublisher<Void, UserError>
+    ) -> AnyPublisher<String, UserError>
+    func read(key: String) -> AnyPublisher<String, UserError>
     func update(
-        email: String,
+        key: String,
         givenName: String?,
-        familyName: String?
-    ) -> AnyPublisher<Void, UserError>
-    func delete(email: String) -> AnyPublisher<Void, UserError>
+        familyName: String?,
+        email: String?
+    ) -> AnyPublisher<String, UserError>
+    func delete(key: String) -> AnyPublisher<Void, UserError>
 }
 
 // MARK: - MIDDLEWARE

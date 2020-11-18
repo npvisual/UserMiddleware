@@ -59,9 +59,7 @@ public protocol UserStorage {
     func read(key: String) -> AnyPublisher<String, UserError>
     func update(
         key: String,
-        givenName: String?,
-        familyName: String?,
-        email: String?
+        params: [String: Any]
     ) -> AnyPublisher<String, UserError>
     func delete(key: String) -> AnyPublisher<Void, UserError>
 }

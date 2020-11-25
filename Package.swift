@@ -8,7 +8,7 @@ let package = Package(
     // TODO: Review version requirements
     platforms: [
         .macOS(.v10_15),
-        .iOS(.v13),
+        .iOS(.v14),
         .tvOS(.v13),
         .watchOS(.v6),
     ],

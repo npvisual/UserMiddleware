@@ -10,9 +10,11 @@ public enum UserAction {
     case delete
     case update
     case read
+    case stateChanged(UserState)
 }
 
 public struct UserState: Codable, Equatable, Hashable {
+    public let localId: String?
     public let beaconid: UInt16?
     public let email: String?
     public let givenName: String?
@@ -24,6 +26,7 @@ public struct UserState: Codable, Equatable, Hashable {
     public static let empty: UserState = .init()
     
     public init(
+        localId: String? = nil,
         beaconid: UInt16? = nil,
         email: String? = nil,
         givenName: String? = nil,
@@ -33,6 +36,7 @@ public struct UserState: Codable, Equatable, Hashable {
         tracking: Bool? = true
     )
     {
+        self.localId = localId
         self.beaconid = beaconid
         self.email = email
         self.givenName = givenName
@@ -62,6 +66,7 @@ public protocol UserStorage {
         params: [String: Any]
     ) -> AnyPublisher<String, UserError>
     func delete(key: String) -> AnyPublisher<Void, UserError>
+    func userChangeListener(key: String) -> AnyPublisher<UserState, UserError>
 }
 
 // MARK: - MIDDLEWARE
@@ -76,6 +81,9 @@ public class UserMiddleware: Middleware {
     private var getState: () -> StateType = {  StateType.empty }
 
     private var provider: UserStorage
+    
+    private var currentUserKey: PassthroughSubject<String, Never> = PassthroughSubject()
+    private var stateChangeCancellable: AnyCancellable?
 
     public init(provider: UserStorage) {
         self.provider = provider
@@ -89,7 +97,30 @@ public class UserMiddleware: Middleware {
         )
         self.getState = getState
         self.output = output
-
+        self.stateChangeCancellable = currentUserKey
+            .flatMap { key in
+                self.provider.userChangeListener(key: key)
+            }
+            .sink { (completion: Subscribers.Completion<UserError>) in
+                var result: String = "success"
+                if case Subscribers.Completion.failure = completion {
+                    result = "failure"
+                }
+                os_log(
+                    "State change completion with %s...",
+                    log: UserMiddleware.logger,
+                    type: .debug,
+                    result
+                )
+            } receiveValue: { user in
+                os_log(
+                    "State change receiving value for user : %s...",
+                    log: UserMiddleware.logger,
+                    type: .debug,
+                    String(describing: user.localId)
+                )
+                self.output?.dispatch(.stateChanged(user))
+            }
     }
     
     public func handle(
@@ -98,16 +129,16 @@ public class UserMiddleware: Middleware {
         afterReducer : inout AfterReducer
     ) {
         switch action {
-        default:
-            os_log(
-                "Not handling this case : %s ...",
-                log: UserMiddleware.logger,
-                type: .debug,
-                String(describing: action)
-            )
-            break
+            default:
+                os_log(
+                    "Not handling this case : %s ...",
+                    log: UserMiddleware.logger,
+                    type: .debug,
+                    String(describing: action)
+                )
+                break
         }
-
+        
         afterReducer = .do { [self] in
             let newState = getState()
             os_log(
@@ -116,14 +147,18 @@ public class UserMiddleware: Middleware {
                 type: .debug
             )
             switch action {
-            default:
-                os_log(
-                    "Apparently not handling this case either : %s...",
-                    log: UserMiddleware.logger,
-                    type: .debug,
-                    String(describing: action)
-                )
-                break
+                case .create:
+                    if let key = newState.localId {
+                        currentUserKey.send(key)
+                    }
+                default:
+                    os_log(
+                        "Apparently not handling this case either : %s...",
+                        log: UserMiddleware.logger,
+                        type: .debug,
+                        String(describing: action)
+                    )
+                    break
             }
         }
     }

@@ -25,13 +25,6 @@ public struct UserState: Codable, Equatable, Hashable {
     public let families: [String: Bool]?
     public let tracking: Bool?
     
-    public static let empty: UserState = .init(
-        localId: "",
-        email: "",
-        givenName: "",
-        familyName: ""
-    )
-    
     public init(
         localId: String,
         beaconid: UInt16? = nil,
@@ -83,7 +76,7 @@ public class UserMiddleware: Middleware {
     private static let logger = OSLog(subsystem: Bundle.main.bundleIdentifier!, category: "UserMiddleware")
 
     private var output: AnyActionHandler<OutputActionType>? = nil
-    private var getState: GetState<StateType> = { StateType.empty }
+    private var getState: GetState<StateType>? = nil
 
     private var provider: UserStorage
     
@@ -134,7 +127,6 @@ public class UserMiddleware: Middleware {
         from dispatcher: ActionSource,
         afterReducer : inout AfterReducer
     ) {
-        let state = getState()
         switch action {
             default:
                 os_log(
@@ -147,50 +139,52 @@ public class UserMiddleware: Middleware {
         }
         
         afterReducer = .do { [self] in
-            let newState = getState()
-            os_log(
-                "Calling afterReducer closure...",
-                log: UserMiddleware.logger,
-                type: .debug
-            )
-            switch action {
-                case .start:
-                    currentUserKey.send(newState.localId)
-                case .create:
-                    userOperationCancellable = provider
-                        .create(
-                            key: state.localId,
-                            givenName: state.givenName,
-                            familyName: state.familyName,
-                            email: state.email
-                        )
-                        .sink { (completion: Subscribers.Completion<UserError>) in
-                            var result: String = "success"
-                            if case Subscribers.Completion.failure = completion {
-                                result = "failure"
+            if let state = getState {
+                os_log(
+                    "Calling afterReducer closure...",
+                    log: UserMiddleware.logger,
+                    type: .debug
+                )
+                let newState = state()
+                switch action {
+                    case .start:
+                        currentUserKey.send(newState.localId)
+                    case .create:
+                        userOperationCancellable = provider
+                            .create(
+                                key: newState.localId,
+                                givenName: newState.givenName,
+                                familyName: newState.familyName,
+                                email: newState.email
+                            )
+                            .sink { (completion: Subscribers.Completion<UserError>) in
+                                var result: String = "success"
+                                if case Subscribers.Completion.failure = completion {
+                                    result = "failure"
+                                }
+                                os_log(
+                                    "User creation completion with %s...",
+                                    log: UserMiddleware.logger,
+                                    type: .debug,
+                                    result
+                                )
+                            } receiveValue: { ref in
+                                os_log(
+                                    "User creation receiving ref : %s...",
+                                    log: UserMiddleware.logger,
+                                    type: .debug,
+                                    String(describing: ref)
+                                )
                             }
-                            os_log(
-                                "User creation completion with %s...",
-                                log: UserMiddleware.logger,
-                                type: .debug,
-                                result
-                            )
-                        } receiveValue: { ref in
-                            os_log(
-                                "User creation receiving ref : %s...",
-                                log: UserMiddleware.logger,
-                                type: .debug,
-                                String(describing: ref)
-                            )
-                        }
-                default:
-                    os_log(
-                        "Apparently not handling this case either : %s...",
-                        log: UserMiddleware.logger,
-                        type: .debug,
-                        String(describing: action)
-                    )
-                    break
+                    default:
+                        os_log(
+                            "Apparently not handling this case either : %s...",
+                            log: UserMiddleware.logger,
+                            type: .debug,
+                            String(describing: action)
+                        )
+                        break
+                }
             }
         }
     }

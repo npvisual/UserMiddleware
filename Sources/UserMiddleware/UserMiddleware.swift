@@ -5,6 +5,7 @@ import Combine
 import SwiftRex
 
 // MARK: - ACTIONS
+//sourcery: Prism
 public enum UserAction {
     case start
     case create
@@ -15,24 +16,28 @@ public enum UserAction {
 }
 
 public struct UserState: Codable, Equatable, Hashable {
-    public let localId: String?
+    public let localId: String
     public let beaconid: UInt16?
-    public let email: String?
-    public let givenName: String?
-    public let familyName: String?
-    public let displayName: String?
+    public let email: String
+    public let givenName: String
+    public let familyName: String
+    public var displayName: String { givenName + familyName }
     public let families: [String: Bool]?
     public let tracking: Bool?
     
-    public static let empty: UserState = .init()
+    public static let empty: UserState = .init(
+        localId: "",
+        email: "",
+        givenName: "",
+        familyName: ""
+    )
     
     public init(
-        localId: String? = nil,
+        localId: String,
         beaconid: UInt16? = nil,
-        email: String? = nil,
-        givenName: String? = nil,
-        familyName: String? = nil,
-        displayName: String? = nil,
+        email: String,
+        givenName: String,
+        familyName: String,
         families: [String: Bool]? = nil,
         tracking: Bool? = true
     )
@@ -42,7 +47,6 @@ public struct UserState: Codable, Equatable, Hashable {
         self.email = email
         self.givenName = givenName
         self.familyName = familyName
-        self.displayName = displayName
         self.families = families
         self.tracking = tracking
     }
@@ -79,12 +83,13 @@ public class UserMiddleware: Middleware {
     private static let logger = OSLog(subsystem: Bundle.main.bundleIdentifier!, category: "UserMiddleware")
 
     private var output: AnyActionHandler<OutputActionType>? = nil
-    private var getState: () -> StateType = {  StateType.empty }
+    private var getState: GetState<StateType> = { StateType.empty }
 
     private var provider: UserStorage
     
     private var currentUserKey: PassthroughSubject<String, Never> = PassthroughSubject()
     private var stateChangeCancellable: AnyCancellable?
+    private var userOperationCancellable: AnyCancellable?
 
     public init(provider: UserStorage) {
         self.provider = provider
@@ -129,7 +134,35 @@ public class UserMiddleware: Middleware {
         from dispatcher: ActionSource,
         afterReducer : inout AfterReducer
     ) {
+        let state = getState()
         switch action {
+            case .create:
+                userOperationCancellable = provider
+                    .create(
+                        key: state.localId,
+                        givenName: state.givenName,
+                        familyName: state.familyName,
+                        email: state.email
+                    )
+                    .sink { (completion: Subscribers.Completion<UserError>) in
+                        var result: String = "success"
+                        if case Subscribers.Completion.failure = completion {
+                            result = "failure"
+                        }
+                        os_log(
+                            "User creation completion with %s...",
+                            log: UserMiddleware.logger,
+                            type: .debug,
+                            result
+                        )
+                    } receiveValue: { ref in
+                        os_log(
+                            "User creation receiving ref : %s...",
+                            log: UserMiddleware.logger,
+                            type: .debug,
+                            String(describing: ref)
+                        )
+                    }
             default:
                 os_log(
                     "Not handling this case : %s ...",
@@ -149,9 +182,7 @@ public class UserMiddleware: Middleware {
             )
             switch action {
                 case .start:
-                    if let key = newState.localId {
-                        currentUserKey.send(key)
-                    }
+                    currentUserKey.send(newState.localId)
                 default:
                     os_log(
                         "Apparently not handling this case either : %s...",

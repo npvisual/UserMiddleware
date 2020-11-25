@@ -136,33 +136,6 @@ public class UserMiddleware: Middleware {
     ) {
         let state = getState()
         switch action {
-            case .create:
-                userOperationCancellable = provider
-                    .create(
-                        key: state.localId,
-                        givenName: state.givenName,
-                        familyName: state.familyName,
-                        email: state.email
-                    )
-                    .sink { (completion: Subscribers.Completion<UserError>) in
-                        var result: String = "success"
-                        if case Subscribers.Completion.failure = completion {
-                            result = "failure"
-                        }
-                        os_log(
-                            "User creation completion with %s...",
-                            log: UserMiddleware.logger,
-                            type: .debug,
-                            result
-                        )
-                    } receiveValue: { ref in
-                        os_log(
-                            "User creation receiving ref : %s...",
-                            log: UserMiddleware.logger,
-                            type: .debug,
-                            String(describing: ref)
-                        )
-                    }
             default:
                 os_log(
                     "Not handling this case : %s ...",
@@ -183,6 +156,33 @@ public class UserMiddleware: Middleware {
             switch action {
                 case .start:
                     currentUserKey.send(newState.localId)
+                case .create:
+                    userOperationCancellable = provider
+                        .create(
+                            key: state.localId,
+                            givenName: state.givenName,
+                            familyName: state.familyName,
+                            email: state.email
+                        )
+                        .sink { (completion: Subscribers.Completion<UserError>) in
+                            var result: String = "success"
+                            if case Subscribers.Completion.failure = completion {
+                                result = "failure"
+                            }
+                            os_log(
+                                "User creation completion with %s...",
+                                log: UserMiddleware.logger,
+                                type: .debug,
+                                result
+                            )
+                        } receiveValue: { ref in
+                            os_log(
+                                "User creation receiving ref : %s...",
+                                log: UserMiddleware.logger,
+                                type: .debug,
+                                String(describing: ref)
+                            )
+                        }
                 default:
                     os_log(
                         "Apparently not handling this case either : %s...",

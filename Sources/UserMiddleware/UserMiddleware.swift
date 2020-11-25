@@ -6,6 +6,7 @@ import SwiftRex
 
 // MARK: - ACTIONS
 public enum UserAction {
+    case start
     case create
     case delete
     case update
@@ -147,7 +148,7 @@ public class UserMiddleware: Middleware {
                 type: .debug
             )
             switch action {
-                case .create:
+                case .start:
                     if let key = newState.localId {
                         currentUserKey.send(key)
                     }

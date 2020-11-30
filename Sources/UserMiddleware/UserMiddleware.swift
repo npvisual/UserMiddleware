@@ -71,7 +71,7 @@ public protocol UserStorage {
 public class UserMiddleware: Middleware {
     public typealias InputActionType = UserAction
     public typealias OutputActionType = UserAction
-    public typealias StateType = UserState
+    public typealias StateType = UserState?
     
     private static let logger = OSLog(subsystem: Bundle.main.bundleIdentifier!, category: "UserMiddleware")
 
@@ -139,13 +139,13 @@ public class UserMiddleware: Middleware {
         }
         
         afterReducer = .do { [self] in
-            if let state = getState {
+            if let state = getState,
+               let newState = state() {
                 os_log(
                     "Calling afterReducer closure...",
                     log: UserMiddleware.logger,
                     type: .debug
                 )
-                let newState = state()
                 switch action {
                     case .start:
                         currentUserKey.send(newState.localId)

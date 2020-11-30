@@ -11,17 +11,6 @@ import AppKit
 #endif
 
 extension UserAction {
-    public var start: Void? {
-        get {
-            guard case .start = self else { return nil }
-            return ()
-        }
-    }
-
-    public var isStart: Bool {
-        self.start != nil
-    }
-
     public var create: Void? {
         get {
             guard case .create = self else { return nil }
@@ -55,10 +44,14 @@ extension UserAction {
         self.update != nil
     }
 
-    public var read: Void? {
+    public var read: String? {
         get {
-            guard case .read = self else { return nil }
-            return ()
+            guard case let .read(associatedValue0) = self else { return nil }
+            return (associatedValue0)
+        }
+        set {
+            guard case .read = self, let newValue = newValue else { return }
+            self = .read(newValue)
         }
     }
 

@@ -7,11 +7,10 @@ import SwiftRex
 // MARK: - ACTIONS
 //sourcery: Prism
 public enum UserAction {
-    case start
     case create
     case delete
     case update
-    case read
+    case read(String)
     case stateChanged(UserState)
 }
 
@@ -128,17 +127,14 @@ public class UserMiddleware: Middleware {
         afterReducer : inout AfterReducer
     ) {
         switch action {
-            case .start:
-                if let state = getState,
-                   let oldState = state() {
-                    os_log(
-                        "Starting the user service for : %s ...",
-                        log: UserMiddleware.logger,
-                        type: .debug,
-                        String(describing: oldState.localId)
-                    )
-                    currentUserKey.send(oldState.localId)
-                }
+            case let .read(id):
+                os_log(
+                    "Reading user with id : %s ...",
+                    log: UserMiddleware.logger,
+                    type: .debug,
+                    String(describing: id)
+                )
+                currentUserKey.send(id)
             default:
                 os_log(
                     "Not handling this case : %s ...",
@@ -158,8 +154,6 @@ public class UserMiddleware: Middleware {
                     type: .debug
                 )
                 switch action {
-                    case .start:
-                        currentUserKey.send(newState.localId)
                     case .create:
                         userOperationCancellable = provider
                             .create(

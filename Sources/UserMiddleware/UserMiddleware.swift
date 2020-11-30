@@ -128,6 +128,17 @@ public class UserMiddleware: Middleware {
         afterReducer : inout AfterReducer
     ) {
         switch action {
+            case .start:
+                if let state = getState,
+                   let oldState = state() {
+                    os_log(
+                        "Starting the user service for : %s ...",
+                        log: UserMiddleware.logger,
+                        type: .debug,
+                        String(describing: oldState.localId)
+                    )
+                    currentUserKey.send(oldState.localId)
+                }
             default:
                 os_log(
                     "Not handling this case : %s ...",

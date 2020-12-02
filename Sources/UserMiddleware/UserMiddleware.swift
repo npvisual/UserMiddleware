@@ -51,19 +51,11 @@ public enum UserError: Error {
 
 // MARK: - PROTOCOL
 public protocol UserStorage {
-    func create(
-        key: String,
-        givenName: String,
-        familyName: String,
-        email: String
-    ) -> AnyPublisher<String, UserError>
-    func read(key: String) -> AnyPublisher<String, UserError>
-    func update(
-        key: String,
-        params: [String: Any]
-    ) -> AnyPublisher<String, UserError>
+    func register(key: String)
+    func create(key: String, givenName: String, familyName: String, email: String) -> AnyPublisher<Void, UserError>
+    func update(key: String, params: [String: Any]) -> AnyPublisher<Void, UserError>
     func delete(key: String) -> AnyPublisher<Void, UserError>
-    func userChangeListener(key: String) -> AnyPublisher<UserState, UserError>
+    func userChangeListener() -> AnyPublisher<UserState, UserError>
 }
 
 // MARK: - MIDDLEWARE
@@ -79,7 +71,6 @@ public class UserMiddleware: Middleware {
 
     private var provider: UserStorage
     
-    private var currentUserKey: PassthroughSubject<String, Never> = PassthroughSubject()
     private var stateChangeCancellable: AnyCancellable?
     private var userOperationCancellable: AnyCancellable?
 
@@ -95,17 +86,15 @@ public class UserMiddleware: Middleware {
         )
         self.getState = getState
         self.output = output
-        self.stateChangeCancellable = currentUserKey
-            .flatMap { key in
-                self.provider.userChangeListener(key: key)
-            }
+        self.stateChangeCancellable = provider
+            .userChangeListener()
             .sink { (completion: Subscribers.Completion<UserError>) in
                 var result: String = "success"
-                if case Subscribers.Completion.failure = completion {
-                    result = "failure"
+                if case let Subscribers.Completion.failure(err) = completion {
+                    result = "failure : " + err.localizedDescription
                 }
                 os_log(
-                    "State change completion with %s...",
+                    "State change completed with %s.",
                     log: UserMiddleware.logger,
                     type: .debug,
                     result
@@ -134,7 +123,7 @@ public class UserMiddleware: Middleware {
                     type: .debug,
                     String(describing: id)
                 )
-                currentUserKey.send(id)
+                provider.register(key: id)
             default:
                 os_log(
                     "Not handling this case : %s ...",
@@ -164,21 +153,41 @@ public class UserMiddleware: Middleware {
                             )
                             .sink { (completion: Subscribers.Completion<UserError>) in
                                 var result: String = "success"
-                                if case Subscribers.Completion.failure = completion {
-                                    result = "failure"
+                                if case let Subscribers.Completion.failure(err) = completion {
+                                    result = "failure : " + err.localizedDescription
                                 }
                                 os_log(
-                                    "User creation completion with %s...",
+                                    "User creation completed with %s.",
                                     log: UserMiddleware.logger,
                                     type: .debug,
                                     result
                                 )
-                            } receiveValue: { ref in
+                            } receiveValue: { _ in
                                 os_log(
-                                    "User creation receiving ref : %s...",
+                                    "User creation received ack.",
+                                    log: UserMiddleware.logger,
+                                    type: .debug
+                                )
+                            }
+                    case .delete:
+                        userOperationCancellable = provider
+                            .delete(key: newState.localId)
+                            .sink { (completion: Subscribers.Completion<UserError>) in
+                                var result: String = "success"
+                                if case let Subscribers.Completion.failure(err) = completion {
+                                    result = "failure : " + err.localizedDescription
+                                }
+                                os_log(
+                                    "User deletion completed with %s.",
                                     log: UserMiddleware.logger,
                                     type: .debug,
-                                    String(describing: ref)
+                                    result
+                                )
+                            } receiveValue: { _ in
+                                os_log(
+                                    "User deletion received ack.",
+                                    log: UserMiddleware.logger,
+                                    type: .debug
                                 )
                             }
                     default:

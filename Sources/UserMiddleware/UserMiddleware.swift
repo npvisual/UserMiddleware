@@ -10,7 +10,7 @@ public enum UserAction {
     case create
     case delete
     case update
-    case read(String)
+    case register(String)
     case stateChanged(UserState)
 }
 
@@ -53,7 +53,10 @@ public struct UserInfo: Codable, Equatable, Hashable {
 
 // MARK: - ERRORS
 public enum UserError: Error {
-    case somethingSomething
+    case userDecodingError
+    case userDataNotFoundError
+    case userCreationError
+    case userDeletionError
 }
 
 // MARK: - PROTOCOL
@@ -66,6 +69,16 @@ public protocol UserStorage {
 }
 
 // MARK: - MIDDLEWARE
+
+/// The UserMiddleware is specifically designed to suit the needs of one application.
+///
+/// It offers the following :
+///   * it registers a key with the data provider (see below),
+///   * it provides several facilities to create, update and delete the user entry
+///   * it listens to all state changes for the particular key that was registered
+/// Any new state change collected from the listener is dispatched as an action
+/// so the global state can be modified accordingly.
+///
 public class UserMiddleware: Middleware {
     public typealias InputActionType = UserAction
     public typealias OutputActionType = UserAction
@@ -123,9 +136,9 @@ public class UserMiddleware: Middleware {
         afterReducer : inout AfterReducer
     ) {
         switch action {
-            case let .read(id):
+            case let .register(id):
                 os_log(
-                    "Reading user with id : %s ...",
+                    "Registering user with id : %s ...",
                     log: UserMiddleware.logger,
                     type: .debug,
                     String(describing: id)

@@ -44,19 +44,19 @@ extension UserAction {
         self.update != nil
     }
 
-    public var read: String? {
+    public var register: String? {
         get {
-            guard case let .read(associatedValue0) = self else { return nil }
+            guard case let .register(associatedValue0) = self else { return nil }
             return (associatedValue0)
         }
         set {
-            guard case .read = self, let newValue = newValue else { return }
-            self = .read(newValue)
+            guard case .register = self, let newValue = newValue else { return }
+            self = .register(newValue)
         }
     }
 
-    public var isRead: Bool {
-        self.read != nil
+    public var isRegister: Bool {
+        self.register != nil
     }
 
     public var stateChanged: UserState? {

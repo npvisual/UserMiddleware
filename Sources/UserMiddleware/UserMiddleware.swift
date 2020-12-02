@@ -15,7 +15,11 @@ public enum UserAction {
 }
 
 public struct UserState: Codable, Equatable, Hashable {
-    public let localId: String
+    public let key: String
+    public let value: UserInfo
+}
+
+public struct UserInfo: Codable, Equatable, Hashable {
     public let beaconid: UInt16?
     public let email: String
     public let givenName: String
@@ -23,9 +27,8 @@ public struct UserState: Codable, Equatable, Hashable {
     public var displayName: String { givenName + familyName }
     public let families: [String: Bool]?
     public let tracking: Bool?
-    
+
     public init(
-        localId: String,
         beaconid: UInt16? = nil,
         email: String,
         givenName: String,
@@ -34,7 +37,6 @@ public struct UserState: Codable, Equatable, Hashable {
         tracking: Bool? = true
     )
     {
-        self.localId = localId
         self.beaconid = beaconid
         self.email = email
         self.givenName = givenName
@@ -104,7 +106,7 @@ public class UserMiddleware: Middleware {
                     "State change receiving value for user : %s...",
                     log: UserMiddleware.logger,
                     type: .debug,
-                    String(describing: user.localId)
+                    String(describing: user.key)
                 )
                 self.output?.dispatch(.stateChanged(user))
             }
@@ -146,10 +148,10 @@ public class UserMiddleware: Middleware {
                     case .create:
                         userOperationCancellable = provider
                             .create(
-                                key: newState.localId,
-                                givenName: newState.givenName,
-                                familyName: newState.familyName,
-                                email: newState.email
+                                key: newState.key,
+                                givenName: newState.value.givenName,
+                                familyName: newState.value.familyName,
+                                email: newState.value.email
                             )
                             .sink { (completion: Subscribers.Completion<UserError>) in
                                 var result: String = "success"
@@ -171,7 +173,7 @@ public class UserMiddleware: Middleware {
                             }
                     case .delete:
                         userOperationCancellable = provider
-                            .delete(key: newState.localId)
+                            .delete(key: newState.key)
                             .sink { (completion: Subscribers.Completion<UserError>) in
                                 var result: String = "success"
                                 if case let Subscribers.Completion.failure(err) = completion {

@@ -17,6 +17,11 @@ public enum UserAction {
 public struct UserState: Codable, Equatable, Hashable {
     public let key: String
     public let value: UserInfo
+    
+    public init(key: String, value: UserInfo) {
+        self.key = key
+        self.value = value
+    }
 }
 
 public struct UserInfo: Codable, Equatable, Hashable {

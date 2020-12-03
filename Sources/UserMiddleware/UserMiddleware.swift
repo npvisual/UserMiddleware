@@ -25,16 +25,16 @@ public struct UserState: Codable, Equatable, Hashable {
 }
 
 public struct UserInfo: Equatable, Hashable {
-    public let beaconid: UInt16?
+    public let beaconid: UInt16
     public let email: String
     public let givenName: String
     public let familyName: String
-    public var displayName: String { givenName + familyName }
+    public var displayName: String { givenName + " " + familyName }
     public let families: [String: Bool]?
     public let tracking: Bool?
 
     public init(
-        beaconid: UInt16? = nil,
+        beaconid: UInt16 = UInt16.random(in: UInt16.min...UInt16.max),
         email: String,
         givenName: String,
         familyName: String,
@@ -75,7 +75,7 @@ public enum UserError: Error {
 // MARK: - PROTOCOL
 public protocol UserStorage {
     func register(key: String)
-    func create(key: String, givenName: String, familyName: String, email: String) -> AnyPublisher<Void, UserError>
+    func create(key: String, user: UserInfo) -> AnyPublisher<Void, UserError>
     func update(key: String, params: [String: Any]) -> AnyPublisher<Void, UserError>
     func delete(key: String) -> AnyPublisher<Void, UserError>
     func userChangeListener() -> AnyPublisher<UserState, UserError>
@@ -180,9 +180,11 @@ public class UserMiddleware: Middleware {
                         userOperationCancellable = provider
                             .create(
                                 key: newState.key,
-                                givenName: newState.value.givenName,
-                                familyName: newState.value.familyName,
-                                email: newState.value.email
+                                user: UserInfo(
+                                    email: newState.value.email,
+                                    givenName: newState.value.givenName,
+                                    familyName: newState.value.familyName
+                                )
                             )
                             .sink { (completion: Subscribers.Completion<UserError>) in
                                 var result: String = "success"

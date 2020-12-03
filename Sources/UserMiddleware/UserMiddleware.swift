@@ -29,7 +29,7 @@ public struct UserInfo: Equatable, Hashable {
     public let email: String
     public let givenName: String
     public let familyName: String
-    public var displayName: String { givenName + " " + familyName }
+    public let displayName: String
     public let families: [String: Bool]?
     public let tracking: Bool?
 
@@ -46,6 +46,7 @@ public struct UserInfo: Equatable, Hashable {
         self.email = email
         self.givenName = givenName
         self.familyName = familyName
+        self.displayName = givenName + " " + familyName
         self.families = families
         self.tracking = tracking
     }
@@ -58,6 +59,7 @@ extension UserInfo {
         case beaconid
         case email
         case givenName
+        case displayName
         case familyName
         case families
         case tracking

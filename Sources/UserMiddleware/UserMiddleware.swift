@@ -54,7 +54,7 @@ public struct UserInfo: Equatable, Hashable {
 extension UserInfo: Codable { }
 
 extension UserInfo {
-    public enum CodingKeys: CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case beaconid
         case email
         case givenName
@@ -76,7 +76,7 @@ public enum UserError: Error {
 public protocol UserStorage {
     func register(key: String)
     func create(key: String, givenName: String, familyName: String, email: String) -> AnyPublisher<Void, UserError>
-    func update(key: String, params: [UserInfo.CodingKeys: Any]) -> AnyPublisher<Void, UserError>
+    func update(key: String, params: [String: Any]) -> AnyPublisher<Void, UserError>
     func delete(key: String) -> AnyPublisher<Void, UserError>
     func userChangeListener() -> AnyPublisher<UserState, UserError>
 }
@@ -223,7 +223,11 @@ public class UserMiddleware: Middleware {
                                     type: .debug
                                 )
                             }
-                    case let .update(paramDict):
+                    case let .update(params):
+                        var paramDict: [String: Any] = [:]
+                        params.forEach { key, value in
+                            paramDict.updateValue(value, forKey: key.stringValue)
+                        }
                         userOperationCancellable = provider
                             .update(key: newState.key, params: paramDict)
                             .sink { (completion: Subscribers.Completion<UserError>) in

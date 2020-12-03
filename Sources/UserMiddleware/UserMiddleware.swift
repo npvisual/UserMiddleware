@@ -9,7 +9,7 @@ import SwiftRex
 public enum UserAction {
     case create
     case delete
-    case update
+    case update([UserInfo.CodingKeys: Any])
     case register(String)
     case stateChanged(UserState)
 }
@@ -24,7 +24,7 @@ public struct UserState: Codable, Equatable, Hashable {
     }
 }
 
-public struct UserInfo: Codable, Equatable, Hashable {
+public struct UserInfo: Equatable, Hashable {
     public let beaconid: UInt16?
     public let email: String
     public let givenName: String
@@ -51,6 +51,19 @@ public struct UserInfo: Codable, Equatable, Hashable {
     }
 }
 
+extension UserInfo: Codable { }
+
+extension UserInfo {
+    public enum CodingKeys: CodingKey {
+        case beaconid
+        case email
+        case givenName
+        case familyName
+        case families
+        case tracking
+    }
+}
+
 // MARK: - ERRORS
 public enum UserError: Error {
     case userDecodingError
@@ -63,7 +76,7 @@ public enum UserError: Error {
 public protocol UserStorage {
     func register(key: String)
     func create(key: String, givenName: String, familyName: String, email: String) -> AnyPublisher<Void, UserError>
-    func update(key: String, params: [String: Any]) -> AnyPublisher<Void, UserError>
+    func update(key: String, params: [UserInfo.CodingKeys: Any]) -> AnyPublisher<Void, UserError>
     func delete(key: String) -> AnyPublisher<Void, UserError>
     func userChangeListener() -> AnyPublisher<UserState, UserError>
 }
@@ -206,6 +219,27 @@ public class UserMiddleware: Middleware {
                             } receiveValue: { _ in
                                 os_log(
                                     "User deletion received ack.",
+                                    log: UserMiddleware.logger,
+                                    type: .debug
+                                )
+                            }
+                    case let .update(paramDict):
+                        userOperationCancellable = provider
+                            .update(key: newState.key, params: paramDict)
+                            .sink { (completion: Subscribers.Completion<UserError>) in
+                                var result: String = "success"
+                                if case let Subscribers.Completion.failure(err) = completion {
+                                    result = "failure : " + err.localizedDescription
+                                }
+                                os_log(
+                                    "User update completed with %s.",
+                                    log: UserMiddleware.logger,
+                                    type: .debug,
+                                    result
+                                )
+                            } receiveValue: { _ in
+                                os_log(
+                                    "User update received ack.",
                                     log: UserMiddleware.logger,
                                     type: .debug
                                 )

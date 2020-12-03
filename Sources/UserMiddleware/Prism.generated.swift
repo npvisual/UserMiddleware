@@ -33,10 +33,14 @@ extension UserAction {
         self.delete != nil
     }
 
-    public var update: Void? {
+    public var update: [UserInfo.CodingKeys: Any]? {
         get {
-            guard case .update = self else { return nil }
-            return ()
+            guard case let .update(associatedValue0) = self else { return nil }
+            return (associatedValue0)
+        }
+        set {
+            guard case .update = self, let newValue = newValue else { return }
+            self = .update(newValue)
         }
     }
 

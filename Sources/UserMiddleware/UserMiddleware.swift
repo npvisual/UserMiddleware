@@ -67,6 +67,7 @@ extension UserInfo {
 // MARK: - ERRORS
 public enum UserError: Error {
     case userDecodingError
+    case userEncodingError
     case userDataNotFoundError
     case userCreationError
     case userDeletionError

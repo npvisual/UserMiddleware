@@ -108,7 +108,7 @@ public class UserMiddleware: Middleware {
     private var provider: UserStorage
     
     private var stateChangeCancellable: AnyCancellable?
-    private var userOperationCancellable: AnyCancellable?
+    private var operationCancellable: AnyCancellable?
 
     public init(provider: UserStorage) {
         self.provider = provider
@@ -180,7 +180,7 @@ public class UserMiddleware: Middleware {
                 )
                 switch action {
                     case .create:
-                        userOperationCancellable = provider
+                        operationCancellable = provider
                             .create(
                                 key: newState.key,
                                 user: UserInfo(
@@ -208,7 +208,7 @@ public class UserMiddleware: Middleware {
                                 )
                             }
                     case .delete:
-                        userOperationCancellable = provider
+                        operationCancellable = provider
                             .delete(key: newState.key)
                             .sink { (completion: Subscribers.Completion<UserError>) in
                                 var result: String = "success"
@@ -233,7 +233,7 @@ public class UserMiddleware: Middleware {
                         params.forEach { key, value in
                             paramDict.updateValue(value, forKey: key.stringValue)
                         }
-                        userOperationCancellable = provider
+                        operationCancellable = provider
                             .update(key: newState.key, params: paramDict)
                             .sink { (completion: Subscribers.Completion<UserError>) in
                                 var result: String = "success"
